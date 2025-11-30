@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <title>护肤指南</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <!-- 让它在 iPhone 上更像独立 App -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <meta name="apple-mobile-web-app-title" content="护肤指南" />
+
+    <!-- Tailwind：负责样式，美化页面 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-zinc-50">
+    <div id="root"></div>
+
+    <!-- React 运行环境 -->
+    <script
+      src="https://unpkg.com/react@18/umd/react.production.min.js"
+      crossorigin
+    ></script>
+    <script
+      src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"
+      crossorigin
+    ></script>
+    <!-- Babel：让浏览器直接跑 JSX 代码 -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- 下面是你的 App 代码 -->
+    <script type="text/babel">
+      const { useState, useEffect, useMemo } = React;
+
+      // 一周七天
+      const DAY_LABELS = ["一", "二", "三", "四", "五", "六", "日"];
+      const STORAGE_KEY = "skincare_planner_v2";
+
+      const uid = () => Math.random().toString(36).slice(2, 9);
+
+      function makeSteps(names) {
+        return names.map((n) => ({ id: uid(), name: n }));
+      }
+
+      function defaultWeekPlan() {
+        const week = {};
+
+        // 周一（Stridex 日）
+        week[0] = {
+          steps: makeSteps([
+            "洗脸",
+            "Stridex 棉片擦鼻子 + 下巴 + 下颌（1–2 遍）",
+            "等 10 分钟",
+            "B5 全脸",
+          ]),
+        };
+
+        // 周二（阿达帕林日）
+        week[1] = {
+          steps: makeSteps([
+            "洗脸 → 等脸干 → 少量酵母水",
+            "阿达帕林豌豆大小，薄涂下巴/下颌（可带 T 区）",
+            "3–5 分钟后 B5 全脸",
+          ]),
+        };
+
+        // 周三（VC 日）
+        week[2] = {
+          steps: makeSteps([
+            "洗脸 → 酵母水",
+            "乐敦 VC 点涂痘印",
+            "B5 全脸（两颊干可叠一点羊油）",
+          ]),
+        };
+
+        // 周四（Stridex 日，同周一）
+        week[3] = {
+          steps: makeSteps([
+            "洗脸",
+            "Stridex 棉片擦 T 区 + 下巴",
+            "等 10 分钟",
+            "B5 全脸",
+          ]),
+        };
+
+        // 周五（阿达帕林日，同周二）
+        week[4] = {
+          steps: makeSteps([
+            "洗脸 → 酵母水",
+            "阿达帕林豌豆大小，薄涂下巴/下颌（可带 T 区）",
+            "3–5 分钟后 B5 全脸",
+          ]),
+        };
+
+        // 周六（泥膜大清洁）
+        week[5] = {
+          steps: makeSteps([
+            "洗脸",
+            "泥膜敷 T 区 + 下巴 5–10 分钟 → 洗掉",
+            "酵母水",
+            "B5 全脸",
+            "当天不再用 Stridex / 微酸水 / 阿达帕林 / VC",
+          ]),
+        };
+
+        // 周日（VC 日）
+        week[6] = {
+          steps: makeSteps([
+            "洗脸 → 酵母水",
+            "乐敦 VC 点涂痘印",
+            "B5 全脸（干区可叠少量羊油）",
+          ]),
+        };
+
+        return week;
+      }
+
+      function useLocalStorageState(key, init) {
+        const [state, setState] = useState(() => {
+          try {
+            const raw = window.localStorage.getItem(key);
+            return raw ? JSON.parse(raw) : init();
+          } catch (e) {
+            return init();
+          }
+        });
+
+        useEffect(() => {
+          try {
+            window.localStorage.setItem(key, JSON.stringify(state));
+          } catch (e) {}
+        }, [key, state]);
+
+        return [state, setState];
+      }
+
+      function StepRow({ step, index, onDelete, onChange }) {
+        return (
+          <div className="flex items-start gap-3 rounded-2xl border border-zinc-200 bg-white/70 p-3">
+            <div className="mt-1 h-6 w-6 shrink-0 rounded-full bg-pink-100 text-center text-sm font-medium leading-6 text-pink-700">
+              {index + 1}
+            </div>
+            <div className="flex-1">
+              <input
+                className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-300"
+                value={step.name}
+                onChange={(e) => onChange({ ...step, name: e.target.value })}
+              />
+            </div>
+            <button
+              onClick={onDelete}
+              className="rounded-xl border border-zinc-200 px-3 py-2 text-xs text-zinc-600 hover:bg-zinc-50"
+            >
+              删除
+            </button>
+          </div>
+        );
+      }
+
+      function SkincarePlannerSimple() {
+        const [week, setWeek] = useLocalStorageState(
+          STORAGE_KEY,
+          defaultWeekPlan
+        );
+
+        // 0-6，周一为 0
+        const [day, setDay] = useState(new Date().getDay() - 1);
+        useEffect(() => {
+          if (day < 0 || day > 6) setDay(0);
+        }, [day]);
+
+        const focusPlan = week[String(day)] || { steps: [] };
+
+        function setFocusPlan(plan) {
+          setWeek((prev) => ({
+            ...prev,
+            [String(day)]: plan,
+          }));
+        }
+
+        function addStep() {
+          setFocusPlan({
+            ...focusPlan,
+            steps: [...focusPlan.steps, { id: uid(), name: "新步骤" }],
+          });
+        }
+
+        function resetAll() {
+          if (window.confirm("确定恢复为默认护肤流程？")) {
+            setWeek(defaultWeekPlan());
+          }
+        }
+
+        const shareText = useMemo(() => {
+          const lines = [];
+          const dayName = `周${DAY_LABELS[day]}`;
+          lines.push(`${dayName} 护肤步骤`);
+          focusPlan.steps.forEach((s, i) => {
+            lines.push(`${i + 1}. ${s.name}`);
+          });
+          return lines.join("\n");
+        }, [day, focusPlan]);
+
+        async function copyShare() {
+          try {
+            await navigator.clipboard.writeText(shareText);
+            alert("已复制到剪贴板");
+          } catch (e) {
+            alert("复制失败，可手动选择文本复制");
+          }
+        }
+
+        return (
+          <div className="mx-auto max-w-md p-4 text-zinc-800">
+            {/* 顶部 */}
+            <div className="sticky top-0 z-10 mb-4 flex items-center justify-between bg-gradient-to-b from-zinc-50 to-transparent py-2">
+              <div className="text-2xl font-bold tracking-wide">护肤指南</div>
+              <div className="flex gap-2" />
+            </div>
+
+            {/* 星期选择 */}
+            <section className="mb-5">
+              <div className="mb-2 text-sm text-zinc-500">选择星期</div>
+              <div className="grid grid-cols-7 gap-2">
+                {DAY_LABELS.map((l, idx) => (
+                  <button
+                    key={l}
+                    onClick={() => setDay(idx)}
+                    className={
+                      "h-11 rounded-2xl border text-base font-medium transition " +
+                      (day === idx
+                        ? "border-pink-400 bg-pink-50 text-pink-600"
+                        : "border-zinc-200 text-zinc-600 hover:bg-white")
+                    }
+                  >
+                    {l}
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            {/* 护肤步骤 */}
+            <section className="mb-24">
+              <div className="mb-2 flex items-center justify-between">
+                <div className="text-base font-semibold">每日护肤步骤</div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={addStep}
+                    className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm hover:bg-zinc-50"
+                  >
+                    新增步骤
+                  </button>
+                  <button
+                    onClick={resetAll}
+                    className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm hover:bg-zinc-50"
+                  >
+                    重置模板
+                  </button>
+                </div>
+              </div>
+              <div className="grid gap-3">
+                {focusPlan.steps.map((s, i) => (
+                  <StepRow
+                    key={s.id}
+                    step={s}
+                    index={i}
+                    onDelete={() =>
+                      setFocusPlan({
+                        ...focusPlan,
+                        steps: focusPlan.steps.filter((x) => x.id !== s.id),
+                      })
+                    }
+                    onChange={(ns) =>
+                      setFocusPlan({
+                        ...focusPlan,
+                        steps: focusPlan.steps.map((x) =>
+                          x.id === ns.id ? ns : x
+                        ),
+                      })
+                    }
+                  />
+                ))}
+              </div>
+            </section>
+
+            {/* 底部浮动栏 */}
+            <div className="fixed bottom-0 left-0 right-0 mx-auto max-w-md border-t border-zinc-200 bg-white/95 p-3 backdrop-blur">
+              <div className="flex items-center gap-2">
+                <textarea
+                  readOnly
+                  value={shareText}
+                  className="h-20 flex-1 resize-none rounded-xl border border-zinc-200 bg-white p-3 text-sm leading-6"
+                />
+                <div className="flex w-28 shrink-0 flex-col gap-2">
+                  <button
+                    onClick={copyShare}
+                    className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm hover:bg-zinc-50"
+                  >
+                    复制
+                  </button>
+                  <button
+                    onClick={() => alert("计划已自动保存到本地")}
+                    className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm hover:bg-zinc-50"
+                  >
+                    保存
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      const root = ReactDOM.createRoot(document.getElementById("root"));
+      root.render(<SkincarePlannerSimple />);
+    </script>
+  </body>
+</html>
