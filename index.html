@@ -31,7 +31,7 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <!-- 你的 App 代码 -->
-       <script type="text/babel">
+     <script type="text/babel">
       const { useState, useEffect } = React;
 
       const DAY_LABELS = ["一", "二", "三", "四", "五", "六", "日"];
@@ -135,23 +135,39 @@
         return [state, setState];
       }
 
-      function StepRow({ step, index, onDelete, onChange }) {
+      function StepRow({ step, index, onDelete, onChange, theme }) {
+        const cardClass =
+          "flex items-start gap-3 rounded-2xl border p-3 " +
+          (theme === "pink"
+            ? "border-pink-100 bg-white"
+            : "border-sky-100 bg-white");
+        const badgeClass =
+          "mt-1 h-6 w-6 shrink-0 rounded-full text-center text-sm font-medium leading-6 " +
+          (theme === "pink"
+            ? "bg-pink-100 text-pink-700"
+            : "bg-sky-100 text-sky-700");
+        const inputClass =
+          "w-full rounded-lg border bg-white px-3 py-2 text-sm outline-none focus:ring-2 " +
+          (theme === "pink"
+            ? "border-pink-100 focus:ring-pink-300"
+            : "border-sky-100 focus:ring-sky-300");
+        const deleteBtnClass =
+          "rounded-xl border px-3 py-2 text-xs hover:bg-opacity-80 " +
+          (theme === "pink"
+            ? "border-pink-100 bg-white text-pink-700 hover:bg-pink-50"
+            : "border-sky-100 bg-white text-sky-700 hover:bg-sky-50");
+
         return (
-          <div className="flex items-start gap-3 rounded-2xl border border-pink-100 bg-white p-3">
-            <div className="mt-1 h-6 w-6 shrink-0 rounded-full bg-pink-100 text-center text-sm font-medium leading-6 text-pink-700">
-              {index + 1}
-            </div>
+          <div className={cardClass}>
+            <div className={badgeClass}>{index + 1}</div>
             <div className="flex-1">
               <input
-                className="w-full rounded-lg border border-pink-100 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-300"
+                className={inputClass}
                 value={step.name}
                 onChange={(e) => onChange({ ...step, name: e.target.value })}
               />
             </div>
-            <button
-              onClick={onDelete}
-              className="rounded-xl border border-pink-100 bg-white px-3 py-2 text-xs text-pink-700 hover:bg-pink-50"
-            >
+            <button onClick={onDelete} className={deleteBtnClass}>
               删除
             </button>
           </div>
@@ -163,12 +179,8 @@
           STORAGE_KEY,
           defaultWeekPlan
         );
-
-        // 0-6，周一为 0
-        const [day, setDay] = useState(new Date().getDay() - 1);
-        useEffect(() => {
-          if (day < 0 || day > 6) setDay(0);
-        }, [day]);
+        const [day, setDay] = useState((new Date().getDay() + 6) % 7); // 周一为 0
+        const [theme, setTheme] = useState("pink"); // "pink" 或 "blue"
 
         const focusPlan = week[String(day)] || { steps: [] };
 
@@ -192,17 +204,58 @@
           }
         }
 
+        const rootClasses =
+          "mx-auto max-w-md min-h-screen p-4 " +
+          (theme === "pink"
+            ? "bg-pink-50 text-pink-900"
+            : "bg-sky-50 text-sky-900");
+        const headerFrom =
+          theme === "pink" ? "from-pink-50" : "from-sky-50";
+        const subtitleText =
+          theme === "pink" ? "text-pink-700/80" : "text-sky-700/80";
+
         return (
-          <div className="mx-auto max-w-md min-h-screen p-4 text-pink-900 bg-pink-50">
+          <div className={rootClasses}>
             {/* 顶部 */}
-            <div className="sticky top-0 z-10 mb-4 flex items-center justify-between bg-gradient-to-b from-pink-50 to-transparent py-2">
-              <div className="text-2xl font-bold tracking-wide">护肤指南</div>
-              <div className="flex gap-2" />
+            <div
+              className={
+                "sticky top-0 z-10 mb-4 flex items-center justify-between bg-gradient-to-b " +
+                headerFrom +
+                " to-transparent py-2"
+              }
+            >
+              <div className="text-2xl font-bold tracking-wide">
+                护肤指南
+              </div>
+              <div className="flex gap-2 text-xs">
+                <button
+                  onClick={() => setTheme("pink")}
+                  className={
+                    "rounded-full border px-2 py-1 " +
+                    (theme === "pink"
+                      ? "border-pink-500 bg-pink-500 text-white shadow-sm"
+                      : "border-pink-200 bg-white text-pink-600")
+                  }
+                >
+                  樱花粉
+                </button>
+                <button
+                  onClick={() => setTheme("blue")}
+                  className={
+                    "rounded-full border px-2 py-1 " +
+                    (theme === "blue"
+                      ? "border-sky-500 bg-sky-500 text-white shadow-sm"
+                      : "border-sky-200 bg-white text-sky-600")
+                  }
+                >
+                  海盐蓝
+                </button>
+              </div>
             </div>
 
             {/* 星期选择 */}
             <section className="mb-5">
-              <div className="mb-2 text-sm text-pink-700/80">选择星期</div>
+              <div className={"mb-2 text-sm " + subtitleText}>选择星期</div>
               <div className="grid grid-cols-7 gap-2">
                 {DAY_LABELS.map((l, idx) => (
                   <button
@@ -211,8 +264,12 @@
                     className={
                       "h-11 rounded-2xl border text-base font-medium transition " +
                       (day === idx
-                        ? "border-pink-500 bg-pink-500 text-white shadow-sm"
-                        : "border-pink-100 bg-white text-pink-700 hover:bg-pink-50")
+                        ? theme === "pink"
+                          ? "border-pink-500 bg-pink-500 text-white shadow-sm"
+                          : "border-sky-500 bg-sky-500 text-white shadow-sm"
+                        : theme === "pink"
+                        ? "border-pink-100 bg-white text-pink-700 hover:bg-pink-50"
+                        : "border-sky-100 bg-white text-sky-700 hover:bg-sky-50")
                     }
                   >
                     {l}
@@ -228,13 +285,23 @@
                 <div className="flex gap-2">
                   <button
                     onClick={addStep}
-                    className="rounded-xl border border-pink-500 bg-pink-500 px-3 py-2 text-sm text-white shadow-sm hover:bg-pink-600"
+                    className={
+                      "rounded-xl border px-3 py-2 text-sm shadow-sm " +
+                      (theme === "pink"
+                        ? "border-pink-500 bg-pink-500 text-white hover:bg-pink-600"
+                        : "border-sky-500 bg-sky-500 text-white hover:bg-sky-600")
+                    }
                   >
                     新增步骤
                   </button>
                   <button
                     onClick={resetAll}
-                    className="rounded-xl border border-pink-100 bg-white px-3 py-2 text-sm text-pink-700 hover:bg-pink-50"
+                    className={
+                      "rounded-xl border px-3 py-2 text-sm " +
+                      (theme === "pink"
+                        ? "border-pink-100 bg-white text-pink-700 hover:bg-pink-50"
+                        : "border-sky-100 bg-white text-sky-700 hover:bg-sky-50")
+                    }
                   >
                     重置模板
                   </button>
@@ -246,10 +313,13 @@
                     key={s.id}
                     step={s}
                     index={i}
+                    theme={theme}
                     onDelete={() =>
                       setFocusPlan({
                         ...focusPlan,
-                        steps: focusPlan.steps.filter((x) => x.id !== s.id),
+                        steps: focusPlan.steps.filter(
+                          (x) => x.id !== s.id
+                        ),
                       })
                     }
                     onChange={(ns) =>
